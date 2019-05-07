@@ -1,0 +1,6 @@
+# TO INSTALL:
+sudo usermod -a -G docker mlo-gpu-monitor                                                                                                      
+sudo su -c /mlodata1/gpu-monitor/scripts/install.sh -s /bin/sh mlo-gpu-monitor
+
+# IF MACHINE WAS REBOOTED:
+sudo su -c "cd /mlodata1/gpu-monitor/docker/;docker-compose up -d" -s /bin/sh mlo-gpu-monitor

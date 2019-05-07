@@ -9,7 +9,7 @@
 
     <title>GPU Status</title>
 
-    <!--<meta http-equiv="refresh" content="30">-->
+    <!--<meta http-equiv="refresh" content="300">-->
 
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
 
@@ -62,7 +62,11 @@
 <?php } ?>
 
         <div class="page-header">
-            <h1>GPU Status <small class="hidden-xs">(Refreshed every 30 seconds)</small><a href="https://github.com/jbcdnr/gpu-monitor" style="float:right"><img src="css/gh.png" height="20px"></a></h1>
+	    <h1>GPU Status <small class="hidden-xs">(Refreshed every 30 seconds)</small>
+	    <a href="https://github.com/jbcdnr/gpu-monitor" style="float:right"><img src="css/gh.png" height="20px"></a>
+	    <a href="https://docs.google.com/spreadsheets/d/1k37ZUFryY9yNHMpi9gQIAd691tnoPn7XDLnFQp01enk/edit#gid=0" style="float:right;margin-right:20px;margin-top:0px;cursor:pointer"><img src="css/googlesheet.png" height="20px"></a>
+	    <a href="https://portal.iccluster.epfl.ch/Portal/install/list" style="float:right;margin-right:20px;font-size:0.5em;margin-top:12px">IC</a> 
+	    </h1>
         </div>
 
 <?php
@@ -91,8 +95,8 @@ else
 if (isset($_POST["host"]) && isset($HOSTS[$_POST["host"]])) {
     try {
         if (isset($_POST["reset"])) throw new Exception("reset");
-        $name = preg_replace('/[^\p{L}\p{N}-_.,+\/#&]/u', " ", $_POST["name"]);
-        $comment = preg_replace('/[^\p{L}\p{N}-_.,+\/#&]/u', " ", $_POST["comment"]);
+	$name = preg_replace('/[^\p{L}\p{N}\-_.,+\/#&]/u', " ", $_POST["name"]);
+        $comment = preg_replace('/[^\p{L}\p{N}\-_.,+\/#&]/u', " ", $_POST["comment"]);
         if (preg_match('/^ *(([0-9]+)d)? ?(([0-9]+)h)? *$/i', $_POST["date"], $matches)) {
             $interv = new DateInterval("P".($matches[2] ? $matches[2] : 0)."DT".(isset($matches[4]) ? $matches[4] : 0)."H");
             $date = new DateTime();
@@ -188,7 +192,12 @@ foreach ($HOSTS as $hostname => $hosttitle) {
             $process["time"] = $users[$users_childs[$process["pid"]][0]]["time"];
             $process["alert"] .= ". Kill childs PIDs: ".implode($users_childs[$process["pid"]], ", ");
         }
-        $process["usage"] = round($process['used_gpu_memory'] / $gpus[$process["gpu_uuid"]]['memory.total'] * 100);
+	$totalMemory = $gpus[$process["gpu_uuid"]]["memory.total"];
+	if ($totalMemory > 0) {
+            $process["usage"] = round($process['used_gpu_memory'] / $totalMemory * 100);
+	} else {
+	    $process["usage"] = -1;
+	}
         // if the process does not appear in ps and the gpu is not used, the process is probably dead but still appearing here because no running process was added by nvidia-smi
         if (!$users[$process["pid"]] && $gpus[$process["gpu_uuid"]]['memory.used'] < 10)
             continue;
@@ -197,27 +206,35 @@ foreach ($HOSTS as $hostname => $hosttitle) {
 
     $f = fopen('data/'.$hostname.'_status.csv', "r");
     $diskRaw = fgets($f);
-    if (substr($diskRaw, 0, 3) != "Mem") {
+    if ($diskRaw && substr($diskRaw, 0, 3) != "Mem") {
         preg_match("#^[^ ]+ +([^ ]+) +([^ ]+)#", $diskRaw, $diskRaw);
         $disk = array("total" => round($diskRaw[1]/1024/1024, -1), "used" => round($diskRaw[2]/1024/1024, -1), "usage" => round($diskRaw[2] / $diskRaw[1] * 100));
 
-        $ramRaw = fgets($f);
     }
     else {
         $disk = array("total" => 0, "used" => 0, "usage" => 0);
     }
-    preg_match("#^[^ ]+ +([^ ]+) +([^ ]+)#", $ramRaw, $ramRaw);
-    $ram = array("total" => round($ramRaw[1] / 1024), "used" => round($ramRaw[2] / 1024), "usage" => round($ramRaw[2] / $ramRaw[1] * 100));
+
+    $ramRaw = fgets($f);
+    if ($ramRaw) {
+        preg_match("#^[^ ]+ +([^ ]+) +([^ ]+)#", $ramRaw, $ramRaw);
+        $ram = array("total" => round($ramRaw[1] / 1024), "used" => round($ramRaw[2] / 1024), "usage" => ($ramRaw[1] == 0 ? -1 : round($ramRaw[2] / $ramRaw[1] * 100)));
+    }
 
     //// based on top
     //$cpuRaw = fgets($f);
     //preg_match("#[ ,]([0-9,.]+) id#", $cpuRaw, $cpuRaw);
     //$cpu = 100 - round((float)str_replace(",",".", $cpuRaw[1]));
 
+    $uptime = (float) fgets($f);
     $nbCpu = (int) fgets($f);
-    $uptime = fgets($f);
-    preg_match("#load average: ([0-9\,]+), #", $uptime, $uptime);
-    $cpu = round((float)str_replace(",",".", $uptime[1]) / $nbCpu * 100);
+    if ($nbCpu != 0) {
+        $cpu = round($uptime / $nbCpu);
+    } else {
+	$cpu = -1;
+    }
+    #preg_match("#load average: ([0-9\,]+), #", $uptime, $uptime);
+    #$cpu = round((float)str_replace(",",".", $uptime[1]) / $nbCpu * 100);
 
     fclose($f);
 
