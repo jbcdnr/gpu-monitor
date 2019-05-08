@@ -5,9 +5,27 @@
 This is a fork used by the [MLO](https://mlo.epfl.ch/) lab. We only adapt some of the script to our architecture and try to stick with the original. We try to rebase on the upstream as often as possible. We keep track of the changes we introduced:
 
 - auto detection of iccluster nodes in `index.php`
-- docker deployment in `docker/`
+- docker images and deployment and kubernetes
 
-Orignal README below.
+#### Deployment
+
+Build the docker images and push them to iccluster harbor
+
+```bash
+cd docker
+./publish.sh 902837 11169 latest # with uid and gid
+```
+
+Deploy the web UI on kubernetes
+
+```bash
+cd kubernetes
+./publish.sh
+```
+
+The web interface is available at [http://gpu-monitor.mlo.k8s.iccluster.epfl.ch:30999](http://gpu-monitor.mlo.k8s.iccluster.epfl.ch:30999).
+
+Original README below.
 
 ---
 
