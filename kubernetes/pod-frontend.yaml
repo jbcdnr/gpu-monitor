@@ -5,12 +5,14 @@ metadata:
   labels:
     name: gpu-monitor
 spec:
+  nodeSelector:
+    hardware-type: CPUONLY
   restartPolicy: Always
   containers:
     - name: nginx
       image: ic-registry.epfl.ch/mlo/gpu-monitor-nginx:latest
       ports:
-      - containerPort: 80
+        - containerPort: 80
       volumeMounts:
         - mountPath: /mlodata1
           name: mlodata1
@@ -20,9 +22,9 @@ spec:
         - mountPath: /mlodata1
           name: mlodata1
   volumes:
-  - name: mlo-scratch
-    persistentVolumeClaim:
-      claimName: mlo-scratch
-  - name: mlodata1
-    persistentVolumeClaim:
-      claimName: pv-mlodata1
+    - name: mlo-scratch
+      persistentVolumeClaim:
+        claimName: mlo-scratch
+    - name: mlodata1
+      persistentVolumeClaim:
+        claimName: pv-mlodata1
